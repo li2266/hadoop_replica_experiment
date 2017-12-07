@@ -32,6 +32,7 @@ class origin_schedular():
 		third_rack = first_rack
 		tmp_list = [element for element in node_list if element.rack_id == third_rack]
 		third_node = randint(0, len(tmp_list) - 1)
+		res.append(tmp_list[third_node])
 		if config.replica_number == 3:
 			return res
 

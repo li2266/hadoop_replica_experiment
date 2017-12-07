@@ -16,8 +16,12 @@ class cluster():
 
 		if schedular_type == 1:
 			self.schedular = schedulars.origin_schedular()
-		else:
+		elif schedular_type == 2:
 			self.schedular = schedulars.smart_schedular()
+		else:
+			print("Wrong schedular type")
+
+		self.start_time = time.time()
 
 		t = threading.Thread(target=self.watcher)
 		t.start()
@@ -31,7 +35,7 @@ class cluster():
 			nodes = self.schedular.replica_node(self.nodes, self.rack_number)
 			print("replica nodes are {}".format(nodes))
 			for node in nodes:
-				t = threading.Thread(target=node.write)
+				t = threading.Thread(target=node.write, args=(self.start_time, ))
 				t.start()
 	def watcher(self):
 		while True:
@@ -40,7 +44,7 @@ class cluster():
 				if node.running_tasks != 0:
 					count += 1;
 			if count == 0:
-				print("No node working right now")
+				print("No node working right now. Used time: {}".format(time.time() - self.start_time))
 			else:
 				print("{} nodes are BUSY right now".format(count))
 			time.sleep(1)
@@ -73,7 +77,7 @@ class node():
 		pass
 
 	# write data to a node
-	def write(self):
+	def write(self, start_time):
 		# 10 second to time out
 		self.mutex.acquire(10)
 		self.running_tasks += 1
@@ -82,15 +86,16 @@ class node():
 		sub_speed = float(self.disk_speed) / float(self.running_tasks)
 		sub_running_time = float(rest_size) / float(sub_speed)
 		while sub_running_time > 0:
-			time.sleep(0.1)
-			rest_size -= 0.1 * sub_speed
+			time.sleep(0.01)
+			rest_size -= 0.01 * sub_speed
 			sub_speed = float(self.disk_speed) / float(self.running_tasks)
 			sub_running_time = float(rest_size) / float(sub_speed)
-			print("I am {}, I have {} jobs right now and I need {} s to finish CURRENT job".format(self.node_name, self.running_tasks, sub_running_time))
+			#print("I am {}, I have {} jobs right now and I need {} s to finish CURRENT job".format(self.node_name, self.running_tasks, sub_running_time))
 		self.mutex.acquire(10)
 		self.running_tasks -= 1
 		self.block_amount += 1
 		self.mutex.release()
+		print("{} done using {}".format(self.node_name, time.time() - start_time))
 		return 0
 
 	def __repr__(self):
